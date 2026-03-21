@@ -17,7 +17,7 @@ jobs:
       - name: Setup PHP                  # Étape 2 : installer PHP
         uses: shivammathur/setup-php@v2  # Action pour configurer PHP
         with:
-          php-version: '8.2'             # Version de PHP à utiliser
+          php-version: '8.4'             # Version de PHP à utiliser
           extensions: dom, curl, mbstring, zip, pdo, sqlite, pdo_sqlite, bcmath  # Extensions nécessaires
           coverage: none                 # Pas d'outil de couverture de code
 
