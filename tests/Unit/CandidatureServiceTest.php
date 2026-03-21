@@ -22,7 +22,7 @@ class CandidatureServiceTest extends TestCase
         $this->candidatureService = new CandidatureService();
     }
 
-    /** @test */
+
     public function generer_code_candidat_retourne_un_code_valide()
     {
         $region = \App\Models\Region::create([
@@ -74,7 +74,7 @@ class CandidatureServiceTest extends TestCase
         $this->assertIsString($candidature->code_candidat);
     }
 
-    /** @test */
+   
     public function peut_etre_validee_retourne_false_si_documents_manquants()
     {
         $candidature = new Candidature([
@@ -89,7 +89,7 @@ class CandidatureServiceTest extends TestCase
         $this->assertFalse($candidature->peutEtreValidee());
     }
 
-    /** @test */
+
     public function peut_etre_validee_retourne_true_si_tous_documents_presents()
     {
         $candidature = new Candidature([
@@ -104,7 +104,7 @@ class CandidatureServiceTest extends TestCase
         $this->assertTrue($candidature->peutEtreValidee());
     }
 
-    /** @test */
+
     public function peut_etre_validee_retourne_false_si_deja_valide()
     {
         $candidature = new Candidature([

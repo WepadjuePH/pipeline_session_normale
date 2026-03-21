@@ -184,13 +184,14 @@ class Candidature extends Model
         ]);
     }
 
-    public function marquerCommeAbsent(string $motif = null): void
+    public function marquerCommeAbsent(?string $motif = null): void
     {
         $this->update([
             'statut' => 'absent',
             'motif_rejet' => $motif,
         ]);
     }
+
 
     public function verrouiller(): void
     {

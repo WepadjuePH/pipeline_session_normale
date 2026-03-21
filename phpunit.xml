@@ -32,5 +32,6 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <ini name="error_reporting" value="E_ALL &amp; ~E_DEPRECATED"/>
     </php>
 </phpunit>
