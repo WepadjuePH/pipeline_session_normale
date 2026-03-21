@@ -3,11 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PublicFicheController;
 use App\Models\Candidature;
-use Endroid\QrCode\Builder\Builder;
-use Endroid\QrCode\Encoding\Encoding;
-use Endroid\QrCode\ErrorCorrectionLevel;
-use Endroid\QrCode\RoundBlockSizeMode;
-use Endroid\QrCode\Writer\PngWriter;
+use App\Helpers\QrCodeHelper;
 
 Route::get('/', function () {
     return view('welcome');
@@ -30,27 +26,7 @@ Route::get('/test-fiche-provisoire', function () {
                 <p>Ou utilisez : <code>php artisan db:seed</code></p>";
     }
     
-    // Générer QR Code
-    $qrData = json_encode([
-        'code_candidat' => $candidature->code_candidat,
-        'candidature_id' => $candidature->id,
-        'user_id' => $candidature->user_id,
-        'concours_id' => $candidature->concours_id,
-        'timestamp' => now()->timestamp,
-    ]);
-    
-    $qrCode = new QrCode($qrData);
-    $writer = new PngWriter();
-    $result = $writer->write($qrCode);
-    
-    $qrCodePath = storage_path('app/public/qrcodes/' . $candidature->code_candidat . '.png');
-    
-    // Créer le dossier si nécessaire
-    if (!file_exists(dirname($qrCodePath))) {
-        mkdir(dirname($qrCodePath), 0755, true);
-    }
-    
-    file_put_contents($qrCodePath, $result->getString());
+    $qrCodePath = QrCodeHelper::generate($candidature);
     
     return view('fiches.provisoire', [
         'candidature' => $candidature->load(['user', 'concours', 'centreDepot', 'centreExamen', 'salleExamen']),
@@ -82,27 +58,7 @@ Route::get('/test-convocation', function () {
                 <p>Ou modifiez une candidature existante.</p>";
     }
     
-    // Générer QR Code
-    $qrData = json_encode([
-        'code_candidat' => $candidature->code_candidat,
-        'candidature_id' => $candidature->id,
-        'user_id' => $candidature->user_id,
-        'concours_id' => $candidature->concours_id,
-        'timestamp' => now()->timestamp,
-    ]);
-    
-    $qrCode = new QrCode($qrData);
-    $writer = new PngWriter();
-    $result = $writer->write($qrCode);
-    
-    $qrCodePath = storage_path('app/public/qrcodes/' . $candidature->code_candidat . '.png');
-    
-    // Créer le dossier si nécessaire
-    if (!file_exists(dirname($qrCodePath))) {
-        mkdir(dirname($qrCodePath), 0755, true);
-    }
-    
-    file_put_contents($qrCodePath, $result->getString());
+    $qrCodePath = QrCodeHelper::generate($candidature);
     
     return view('fiches.convocation', [
         'candidature' => $candidature->load(['user', 'concours', 'centreDepot', 'centreExamen', 'salleExamen']),
@@ -145,26 +101,7 @@ Route::get('/test-render/{template}', function ($template) {
         return "<h1>❌ Aucune candidature trouvée</h1><p>Créez d'abord des candidatures de test.</p>";
     }
     
-    // Générer QR Code
-    $qrData = json_encode([
-        'code_candidat' => $candidature->code_candidat,
-        'candidature_id' => $candidature->id,
-        'user_id' => $candidature->user_id,
-        'concours_id' => $candidature->concours_id,
-        'timestamp' => now()->timestamp,
-    ]);
-    
-    $qrCode = new QrCode($qrData);
-    $writer = new PngWriter();
-    $result = $writer->write($qrCode);
-    
-    $qrCodePath = storage_path('app/public/qrcodes/' . $candidature->code_candidat . '.png');
-    
-    if (!file_exists(dirname($qrCodePath))) {
-        mkdir(dirname($qrCodePath), 0755, true);
-    }
-    
-    file_put_contents($qrCodePath, $result->getString());
+    $qrCodePath = QrCodeHelper::generate($candidature);
     
     // Mapper les noms de templates
     $templateMap = [
@@ -206,26 +143,7 @@ Route::get('/test-render-final/{template}', function ($template) {
         return "<h1>❌ Aucune candidature trouvée</h1><p>Créez d'abord des candidatures de test avec le bon statut.</p>";
     }
     
-    // Générer QR Code
-    $qrData = json_encode([
-        'code_candidat' => $candidature->code_candidat,
-        'candidature_id' => $candidature->id,
-        'user_id' => $candidature->user_id,
-        'concours_id' => $candidature->concours_id,
-        'timestamp' => now()->timestamp,
-    ]);
-    
-    $qrCode = new QrCode($qrData);
-    $writer = new PngWriter();
-    $result = $writer->write($qrCode);
-    
-    $qrCodePath = storage_path('app/public/qrcodes/' . $candidature->code_candidat . '.png');
-    
-    if (!file_exists(dirname($qrCodePath))) {
-        mkdir(dirname($qrCodePath), 0755, true);
-    }
-    
-    file_put_contents($qrCodePath, $result->getString());
+    $qrCodePath = QrCodeHelper::generate($candidature);
     
     // Mapper les templates finaux
     $templateMap = [
@@ -242,4 +160,3 @@ Route::get('/test-render-final/{template}', function ($template) {
         'qr_code_path' => $qrCodePath,
     ]);
 })->name('test.render.final');
-
