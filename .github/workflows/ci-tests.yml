@@ -1,33 +1,33 @@
-name: CI - Laravel tests
+name: CI - Laravel tests  # Nom du workflow dans l'onglet Actions
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  push:                  # Déclenchement sur un push
+    branches: [ "main" ] # uniquement sur la branche main
+  pull_request:          # Déclenchement sur une pull request
+    branches: [ "main" ] # vers la branche main
 
 jobs:
-  tests:
-    runs-on: ubuntu-latest
+  tests:                 # Nom du job
+    runs-on: ubuntu-latest  # Machine virtuelle Ubuntu fournie par GitHub
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Checkout code              # Étape 1 : récupérer le code du repo
+        uses: actions/checkout@v4        # Action officielle pour cloner le repo
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+      - name: Setup PHP                  # Étape 2 : installer PHP
+        uses: shivammathur/setup-php@v2  # Action pour configurer PHP
         with:
-          php-version: '8.2'
-          extensions: dom, curl, mbstring, zip, pdo, sqlite, pdo_sqlite, bcmath
-          coverage: none
+          php-version: '8.2'             # Version de PHP à utiliser
+          extensions: dom, curl, mbstring, zip, pdo, sqlite, pdo_sqlite, bcmath  # Extensions nécessaires
+          coverage: none                 # Pas d'outil de couverture de code
 
-      - name: Install dependencies
+      - name: Install dependencies       # Étape 3 : installer les dépendances du projet
         run: composer install --no-interaction --prefer-dist
 
-      - name: Prepare environment file
+      - name: Prepare environment file   # Étape 4 : préparer le fichier .env
         run: |
-          cp .env.example .env
-          php artisan key:generate
+          cp .env.example .env           # Copier .env.example vers .env
+          php artisan key:generate       # Générer la clé d'application
 
-      - name: Run tests
+      - name: Run tests                  # Étape 5 : lancer les tests
         run: php artisan test
