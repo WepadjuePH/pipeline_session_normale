@@ -1,92 +1,94 @@
-name: Pipeline CI/CD - Kaba-Delivery
+name: KABA-DELIVERY CI/CD
 
-# Le pipeline se déclenche à chaque push sur develop ou main, et pour les Pull Requests
 on:
   push:
-    branches: [ "main", "develop" ]
+    branches: [develop, main]
   pull_request:
-    branches: [ "main", "develop" ]
+    branches: [develop, main]
 
 jobs:
-  # ==========================================================
-  # STAGE 1: LINT & TEST (Syntaxe et Tests unitaires Laravel)
-  # ==========================================================
-  lint-and-test:
+  lint-test:
     runs-on: ubuntu-latest
     steps:
-      - name: Récupérer le code du dépôt
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configurer PHP
-        uses: shivammathur/setup-php@v2
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          php-version: '8.2'
-          extensions: mbstring, xml, ctype, iconv, pdo-mysql, gd
+          node-version: "20"
 
-      - name: Copier le fichier d'environnement de test
-        run: cp .env.example .env
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Installer les dépendances Composer
-        run: composer install --no-interaction --prefer-dist
+      - name: Lint
+        run: npm run lint
 
-      - name: Générer la clé d'application Laravel
-        run: php artisan key:generate
+      - name: Test
+        run: npm test -- --coverage
 
-      - name: Exécuter les tests unitaires (PHPUnit)
-        run: vendor/bin/phpunit
-
-  # ==========================================================
-  # STAGE 2 : CODE QUALITY (Analyse SonarQube avec Quality Gate)
-  # ==========================================================
-  sonar-analysis:
-    needs: lint-and-test
+  sonar:
     runs-on: ubuntu-latest
+    needs: lint-test
     steps:
-      - name: Récupérer le code
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Crucial pour SonarQube
 
-      - name: Analyse SonarQube
-        uses: sonarsource/sonarqube-scan-action@v2
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run SonarQube scan
+        uses: SonarSource/sonarqube-scan-action@v2
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
-  # ==========================================================
-  # STAGE 3 : BUILD & PUSH DOCKER HUB (Avec secrets de dépôt)
-  # ==========================================================
-  build-and-push:
-    needs: sonar-analysis
+      - name: Check quality gate
+        uses: SonarSource/sonarqube-quality-gate-action@v1
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  build-scan-push:
     runs-on: ubuntu-latest
+    needs: sonar
     steps:
-      - name: Récupérer le code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Connexion sécurisée à Docker Hub
+      - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Construire et Publier l'image Docker
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          # Publie l'image avec le SHA du commit et le tag "latest" comme demandé
-          tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/kaba-delivery:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/kaba-delivery:${{ github.sha }}
+      - name: Build image
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/kaba-delivery:${{ github.sha }} -t ${{ secrets.DOCKERHUB_USERNAME }}/kaba-delivery:latest .
 
-  # ==========================================================
-  # STAGE 4 : DEPLOIEMENT CONTINU SUR O2SWITCH (Via SSH sécurisé)
-  # ==========================================================
-  deploy:
-    needs: build-and-push
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/kaba-delivery:${{ github.sha }}
+          severity: HIGH,CRITICAL
+          vuln-type: os,library
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Push image
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/kaba-delivery:${{ github.sha }}
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/kaba-delivery:latest
+
+  deploy-o2switch:
     runs-on: ubuntu-latest
+    needs: build-scan-push
     steps:
-      - name: Déploiement via SSH sur O2Switch
+      - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.O2SWITCH_HOST }}
@@ -94,8 +96,8 @@ jobs:
           key: ${{ secrets.O2SWITCH_SSH_KEY }}
           port: ${{ secrets.O2SWITCH_PORT }}
           script: |
-            echo "Connexion réussie à O2Switch !"
-            # Ici le script va sur ton espace d'hébergement, récupère le build ou l'image,
-            # et relance le processus Laravel (ex: php artisan migrate, php artisan config:cache)
-            cd /home/ton_chemin_o2switch/public_html
-            git pull origin main || echo "Pas de git sur cPanel, utilisation du build direct"
+            cd ~/kaba-delivery
+            git pull origin main
+            npm ci --only=production
+            npm run build
+            pm2 restart kaba-delivery || pm2 start dist/server.js --name kaba-delivery
