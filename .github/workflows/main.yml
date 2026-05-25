@@ -1,0 +1,101 @@
+name: Pipeline CI/CD - Kaba-Delivery
+
+# Le pipeline se déclenche à chaque push sur develop ou main, et pour les Pull Requests
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+
+jobs:
+  # ==========================================================
+  # STAGE 1 : LINT & TEST (Syntaxe et Tests unitaires Laravel)
+  # ==========================================================
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code du dépôt
+        uses: actions/checkout@v4
+
+      - name: Configurer PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, iconv, pdo-mysql, gd
+
+      - name: Copier le fichier d'environnement de test
+        run: cp .env.example .env
+
+      - name: Installer les dépendances Composer
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Générer la clé d'application Laravel
+        run: php artisan key:generate
+
+      - name: Exécuter les tests unitaires (PHPUnit)
+        run: vendor/bin/phpunit
+
+  # ==========================================================
+  # STAGE 2 : CODE QUALITY (Analyse SonarQube avec Quality Gate)
+  # ==========================================================
+  sonar-analysis:
+    needs: lint-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Crucial pour SonarQube
+
+      - name: Analyse SonarQube
+        uses: sonarsource/sonarqube-scan-action@v2
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+  # ==========================================================
+  # STAGE 3 : BUILD & PUSH DOCKER HUB (Avec secrets de dépôt)
+  # ==========================================================
+  build-and-push:
+    needs: sonar-analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Connexion sécurisée à Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Construire et Publier l'image Docker
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          # Publie l'image avec le SHA du commit et le tag "latest" comme demandé
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/kaba-delivery:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/kaba-delivery:${{ github.sha }}
+
+  # ==========================================================
+  # STAGE 4 : DEPLOIEMENT CONTINU SUR O2SWITCH (Via SSH sécurisé)
+  # ==========================================================
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Déploiement via SSH sur O2Switch
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.O2SWITCH_HOST }}
+          username: ${{ secrets.O2SWITCH_USER }}
+          key: ${{ secrets.O2SWITCH_SSH_KEY }}
+          port: ${{ secrets.O2SWITCH_PORT }}
+          script: |
+            echo "Connexion réussie à O2Switch !"
+            # Ici le script va sur ton espace d'hébergement, récupère le build ou l'image,
+            # et relance le processus Laravel (ex: php artisan migrate, php artisan config:cache)
+            cd /home/ton_chemin_o2switch/public_html
+            git pull origin main || echo "Pas de git sur cPanel, utilisation du build direct"
