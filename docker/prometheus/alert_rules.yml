@@ -1,0 +1,52 @@
+groups:
+  - name: laravel_alerts
+    rules:
+      # Alerte si l'application est down
+      - alert: ApplicationDown
+        expr: up{job="laravel-app"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Application Laravel est down"
+          description: "L'application Laravel n'est pas accessible depuis {{ $labels.instance }}"
+
+      # Alerte si CPU élevé
+      - alert: HighCPUUsage
+        expr: rate(container_cpu_usage_seconds_total{name="enroulement_app"}[5m]) * 100 > 80
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU usage élevé sur l'application"
+          description: "CPU usage est à {{ $value }}% sur {{ $labels.instance }}"
+
+      # Alerte si mémoire élevée
+      - alert: HighMemoryUsage
+        expr: (container_memory_usage_bytes{name="enroulement_app"} / container_spec_memory_limit_bytes{name="enroulement_app"}) * 100 > 85
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Utilisation mémoire élevée"
+          description: "Mémoire utilisée à {{ $value }}% sur {{ $labels.instance }}"
+
+      # Alerte si base de données down
+      - alert: DatabaseDown
+        expr: up{job="mysql"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Base de données MySQL est down"
+          description: "La base de données MySQL n'est pas accessible"
+
+      # Alerte si trop d'erreurs HTTP
+      - alert: HighErrorRate
+        expr: rate(nginx_http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Taux d'erreur HTTP élevé"
+          description: "Taux d'erreur 5xx élevé: {{ $value }} req/sec"

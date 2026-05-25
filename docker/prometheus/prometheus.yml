@@ -1,0 +1,54 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Règles d'alertes
+rule_files:
+  - "alert_rules.yml"
+
+# Configuration des alertes
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# Targets à surveiller
+scrape_configs:
+  # Prometheus lui-même
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # cAdvisor - Métriques des conteneurs Docker
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 5s
+    metrics_path: /metrics
+
+  # Application Laravel (si elle expose des métriques)
+  - job_name: 'laravel-app'
+    static_configs:
+      - targets: ['app:9000']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # Nginx (si configuré avec nginx-prometheus-exporter)
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['web:80']
+    scrape_interval: 30s
+    metrics_path: /nginx_status
+
+  # MySQL (si configuré avec mysql-exporter)
+  - job_name: 'mysql'
+    static_configs:
+      - targets: ['db:3306']
+    scrape_interval: 30s
+
+  # Node Exporter pour les métriques système (optionnel)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 15s

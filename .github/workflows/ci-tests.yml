@@ -1,33 +1,33 @@
 name: CI - Laravel tests  # Nom du workflow dans l'onglet Actions
 
 on:
-  push:                  # Déclenchement sur un push
-    branches: [ "main" ] # uniquement sur la branche main
-  pull_request:          # Déclenchement sur une pull request
-    branches: [ "main" ] # vers la branche main
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
-  tests:                 # Nom du job
-    runs-on: ubuntu-latest  # Machine virtuelle Ubuntu fournie par GitHub
+  tests:
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code              # Étape 1 : récupérer le code du repo
-        uses: actions/checkout@v4        # Action officielle pour cloner le repo
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Setup PHP                  # Étape 2 : installer PHP
-        uses: shivammathur/setup-php@v2  # Action pour configurer PHP
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.4'             # Version de PHP à utiliser
-          extensions: dom, curl, mbstring, zip, pdo, sqlite, pdo_sqlite, bcmath  # Extensions nécessaires
-          coverage: none                 # Pas d'outil de couverture de code
+          php-version: '8.4'
+          extensions: dom, curl, mbstring, zip, pdo, sqlite, pdo_sqlite, bcmath
+          coverage: none
 
       - name: Install dependencies       # Étape 3 : installer les dépendances du projet
         run: composer install --no-interaction --prefer-dist
 
       - name: Prepare environment file   # Étape 4 : préparer le fichier .env
         run: |
-          cp .env.example .env           # Copier .env.example vers .env
-          php artisan key:generate       # Générer la clé d'application
+          cp .env.example .env
+          php artisan key:generate       
 
       - name: Run tests                  # Étape 5 : lancer les tests
         run: php artisan test

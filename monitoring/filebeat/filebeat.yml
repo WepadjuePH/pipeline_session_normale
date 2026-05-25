@@ -1,0 +1,61 @@
+filebeat.inputs:
+  # Logs Laravel
+  - type: log
+    enabled: true
+    paths:
+      - /app/logs/laravel*.log
+    fields:
+      logtype: laravel
+      service: laravel-app
+    fields_under_root: true
+    multiline.pattern: '^\[\d{4}-\d{2}-\d{2}'
+    multiline.negate: true
+    multiline.match: after
+
+  # Logs Nginx Access
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/nginx/access.log
+    fields:
+      logtype: nginx-access
+      service: nginx
+    fields_under_root: true
+
+  # Logs Nginx Error
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/nginx/error.log
+    fields:
+      logtype: nginx-error
+      service: nginx
+    fields_under_root: true
+
+  # Logs des conteneurs Docker
+  - type: container
+    paths:
+      - '/var/lib/docker/containers/*/*.log'
+    processors:
+      - add_docker_metadata:
+          host: "unix:///var/run/docker.sock"
+
+# Configuration de sortie vers Logstash
+output.logstash:
+  hosts: ["logstash:5044"]
+
+# Configuration des processeurs
+processors:
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+  - add_docker_metadata: ~
+  - add_kubernetes_metadata: ~
+
+# Configuration du logging
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 7
+  permissions: 0644
