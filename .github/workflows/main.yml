@@ -9,7 +9,7 @@ on:
 
 jobs:
   # ==========================================================
-  # STAGE 1 : LINT & TEST (Syntaxe et Tests unitaires Laravel)
+  # STAGE 1: LINT & TEST (Syntaxe et Tests unitaires Laravel)
   # ==========================================================
   lint-and-test:
     runs-on: ubuntu-latest
