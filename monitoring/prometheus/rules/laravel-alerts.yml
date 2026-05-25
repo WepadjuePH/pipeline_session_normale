@@ -1,0 +1,122 @@
+groups:
+  - name: laravel_application
+    rules:
+      # Application Health
+      - alert: LaravelApplicationDown
+        expr: up{job="laravel-app"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: laravel
+        annotations:
+          summary: "Laravel application is down"
+          description: "Laravel application has been down for more than 1 minute"
+
+      # Performance Alerts
+      - alert: HighCPUUsage
+        expr: rate(container_cpu_usage_seconds_total{name="enroulement_app"}[5m]) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: laravel
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is above 80% for more than 5 minutes: {{ $value }}%"
+
+      - alert: HighMemoryUsage
+        expr: (container_memory_usage_bytes{name="enroulement_app"} / container_spec_memory_limit_bytes{name="enroulement_app"}) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: laravel
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is above 85% for more than 5 minutes: {{ $value }}%"
+
+      # HTTP Performance
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(nginx_http_request_duration_seconds_bucket[5m])) > 2
+        for: 3m
+        labels:
+          severity: warning
+          service: nginx
+        annotations:
+          summary: "High response time detected"
+          description: "95th percentile response time is above 2 seconds: {{ $value }}s"
+
+      - alert: HighErrorRate
+        expr: rate(nginx_http_requests_total{status=~"5.."}[5m]) / rate(nginx_http_requests_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          service: nginx
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is above 5% for more than 2 minutes: {{ $value }}%"
+
+  - name: infrastructure
+    rules:
+      # Database Alerts
+      - alert: MySQLDown
+        expr: up{job="mysql-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: mysql
+        annotations:
+          summary: "MySQL database is down"
+          description: "MySQL database has been down for more than 1 minute"
+
+      - alert: MySQLHighConnections
+        expr: mysql_global_status_threads_connected / mysql_global_variables_max_connections > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: mysql
+        annotations:
+          summary: "MySQL high connection usage"
+          description: "MySQL connection usage is above 80%: {{ $value }}%"
+
+      # Redis Alerts
+      - alert: RedisDown
+        expr: up{job="redis-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: redis
+        annotations:
+          summary: "Redis is down"
+          description: "Redis has been down for more than 1 minute"
+
+      - alert: RedisHighMemoryUsage
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          service: redis
+        annotations:
+          summary: "Redis high memory usage"
+          description: "Redis memory usage is above 90%: {{ $value }}%"
+
+  - name: system
+    rules:
+      # System Resource Alerts
+      - alert: HighDiskUsage
+        expr: (node_filesystem_size_bytes - node_filesystem_free_bytes) / node_filesystem_size_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "High disk usage detected"
+          description: "Disk usage is above 85% on {{ $labels.device }}: {{ $value }}%"
+
+      - alert: SystemLoadHigh
+        expr: node_load1 > 2
+        for: 5m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "High system load detected"
+          description: "System load is above 2 for more than 5 minutes: {{ $value }}"
